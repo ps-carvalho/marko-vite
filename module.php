@@ -6,7 +6,6 @@ use Marko\Config\ConfigRepositoryInterface;
 use Marko\Core\Container\ContainerInterface;
 use Marko\Core\Path\ProjectPaths;
 use Marko\Vite\Vite;
-use RuntimeException;
 
 return [
     'enabled' => true,

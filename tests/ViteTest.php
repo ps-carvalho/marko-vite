@@ -28,6 +28,7 @@ function makeProjectPathsWithManifest(array|string $manifest): ProjectPaths
 test('vite returns manifest not found when manifest is missing', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'entry' => 'app/web/resources/js/app.js',
             'buildDirectory' => 'build',
             'manifestFilename' => '.vite/nonexistent.json',
             'useDevServer' => false,
@@ -43,7 +44,6 @@ test('vite returns manifest not found when manifest is missing', function () {
 test('vite detects dev server from config', function () {
     $config = new ConfigRepository([
         'vite' => [
-            'devServerUrl' => 'http://localhost:5173',
             'useDevServer' => true,
         ],
     ]);
@@ -51,6 +51,34 @@ test('vite detects dev server from config', function () {
     $vite = new Vite($config, $this->paths);
 
     expect($vite->useDevServer())->toBeTrue();
+});
+
+test('vite uses the configured default entry when no entry is provided', function () {
+    $config = new ConfigRepository([
+        'vite' => [
+            'entry' => 'app/web/resources/js/app.js',
+            'buildDirectory' => 'build',
+            'manifestFilename' => '.vite/nonexistent.json',
+            'useDevServer' => false,
+        ],
+    ]);
+
+    $vite = new Vite($config, $this->paths);
+    $tags = $vite->headTags();
+
+    expect($tags)->toContain('Vite manifest not found');
+});
+
+test('vite reports when no default entry is configured', function () {
+    $config = new ConfigRepository([
+        'vite' => [
+            'useDevServer' => false,
+        ],
+    ]);
+
+    $vite = new Vite($config, $this->paths);
+
+    expect($vite->headTags())->toBe('<!-- Vite entry is not configured -->');
 });
 
 test('vite dev server tags include vite client and entry', function () {
@@ -72,6 +100,20 @@ test('vite dev server tags include vite client and entry', function () {
     expect($tags)->toContain('rel="stylesheet"');
     expect($tags)->toContain('app/web/resources/css/app.css');
     expect($tags)->not->toContain('@react-refresh');
+});
+
+test('vite reports when the dev server url is missing in dev mode', function () {
+    $config = new ConfigRepository([
+        'vite' => [
+            'useDevServer' => true,
+            'devServerStylesheets' => [],
+        ],
+    ]);
+
+    $vite = new Vite($config, $this->paths);
+
+    expect($vite->headTags('app/web/resources/js/app.js'))
+        ->toBe('<!-- Vite dev server URL is not configured -->');
 });
 
 test('vite dev server tags use the configured dev server url', function () {
@@ -113,6 +155,7 @@ test('vite dev server tags skip react refresh preamble for svelte entries', func
 test('vite returns css and js tags from a production manifest', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'entry' => 'app/web/resources/js/app.js',
             'buildDirectory' => 'build',
             'manifestFilename' => '.vite/manifest.json',
             'useDevServer' => false,
@@ -126,7 +169,7 @@ test('vite returns css and js tags from a production manifest', function () {
         ],
     ]);
 
-    $tags = (new Vite($config, $paths))->headTags('app/web/resources/js/app.js');
+    $tags = (new Vite($config, $paths))->headTags();
 
     expect($tags)->toContain('<link rel="stylesheet" href="/build/assets/app.456.css">');
     expect($tags)->toContain('<script type="module" src="/build/assets/app.123.js"></script>');
@@ -135,6 +178,7 @@ test('vite returns css and js tags from a production manifest', function () {
 test('vite includes imported chunk css and modulepreload tags from a production manifest', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'entry' => 'app/web/resources/js/app.js',
             'buildDirectory' => 'build',
             'manifestFilename' => '.vite/manifest.json',
             'useDevServer' => false,
@@ -158,7 +202,7 @@ test('vite includes imported chunk css and modulepreload tags from a production 
         ],
     ]);
 
-    $tags = (new Vite($config, $paths))->headTags('app/web/resources/js/app.js');
+    $tags = (new Vite($config, $paths))->headTags();
 
     expect($tags)->toContain('<link rel="stylesheet" href="/build/assets/app.456.css">');
     expect($tags)->toContain('<link rel="stylesheet" href="/build/assets/shared.789.css">');
@@ -172,6 +216,7 @@ test('vite includes imported chunk css and modulepreload tags from a production 
 test('vite reports invalid manifests and missing entries', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'entry' => 'app/web/resources/js/app.js',
             'buildDirectory' => 'build',
             'manifestFilename' => '.vite/manifest.json',
             'useDevServer' => false,
@@ -179,10 +224,10 @@ test('vite reports invalid manifests and missing entries', function () {
     ]);
 
     $invalidManifestTags = (new Vite($config, makeProjectPathsWithManifest('not-json')))
-        ->headTags('app/web/resources/js/app.js');
+        ->headTags();
 
     $missingEntryTags = (new Vite($config, makeProjectPathsWithManifest([])))
-        ->headTags('app/web/resources/js/app.js');
+        ->headTags();
 
     expect($invalidManifestTags)->toContain('Vite manifest is invalid');
     expect($missingEntryTags)->toContain("Vite entry 'app/web/resources/js/app.js' not found");

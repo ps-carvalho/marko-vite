@@ -18,8 +18,14 @@ readonly class Vite
     /**
      * Generate Vite script/link tags for the HTML head.
      */
-    public function headTags(string $entry = 'app/web/resources/js/app.js'): string
+    public function headTags(?string $entry = null): string
     {
+        $entry = $entry ?? $this->configuredEntry();
+
+        if ($entry === null) {
+            return '<!-- Vite entry is not configured -->';
+        }
+
         if ($this->useDevServer()) {
             return $this->devServerTags($entry);
         }
@@ -44,7 +50,12 @@ readonly class Vite
      */
     private function devServerTags(string $entry): string
     {
-        $url = rtrim($this->config->getString('vite.devServerUrl'), '/');
+        $url = $this->devServerUrl();
+
+        if ($url === null) {
+            return '<!-- Vite dev server URL is not configured -->';
+        }
+
         $tags = '';
 
         foreach ($this->devServerStylesheets() as $stylesheet) {
@@ -180,6 +191,36 @@ HTML;
         $manifestFilename = $this->config->getString('vite.manifestFilename');
 
         return $this->paths->base.'/public/'.trim($buildDir, '/').'/'.$manifestFilename;
+    }
+
+    private function configuredEntry(): ?string
+    {
+        try {
+            $entry = trim($this->config->getString('vite.entry'));
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($entry === '') {
+            return null;
+        }
+
+        return ltrim($entry, '/');
+    }
+
+    private function devServerUrl(): ?string
+    {
+        try {
+            $url = trim($this->config->getString('vite.devServerUrl'));
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($url === '') {
+            return null;
+        }
+
+        return rtrim($url, '/');
     }
 
     /**

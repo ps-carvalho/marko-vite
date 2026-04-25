@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Marko\Vite;
 
+use Marko\Config\Exceptions\ConfigException;
 use Marko\Config\ConfigRepositoryInterface;
 use Marko\Core\Path\ProjectPaths;
-use Throwable;
+use Marko\Vite\Exceptions\ViteConfigurationException;
 
 readonly class Vite
 {
@@ -20,11 +21,7 @@ readonly class Vite
      */
     public function headTags(?string $entry = null): string
     {
-        $entry = $entry ?? $this->configuredEntry();
-
-        if ($entry === null) {
-            return '<!-- Vite entry is not configured -->';
-        }
+        $entry = $this->normalizeEntry($entry ?? $this->configuredEntry());
 
         if ($this->useDevServer()) {
             return $this->devServerTags($entry);
@@ -38,11 +35,7 @@ readonly class Vite
      */
     public function useDevServer(): bool
     {
-        try {
-            return $this->config->getBool('vite.useDevServer');
-        } catch (Throwable) {
-            return false;
-        }
+        return $this->configBool('vite.useDevServer');
     }
 
     /**
@@ -51,10 +44,6 @@ readonly class Vite
     private function devServerTags(string $entry): string
     {
         $url = $this->devServerUrl();
-
-        if ($url === null) {
-            return '<!-- Vite dev server URL is not configured -->';
-        }
 
         $tags = '';
 
@@ -103,11 +92,7 @@ HTML;
      */
     private function devServerStylesheets(): array
     {
-        try {
-            $stylesheets = $this->config->getArray('vite.devServerStylesheets');
-        } catch (Throwable) {
-            return [];
-        }
+        $stylesheets = $this->configArray('vite.devServerStylesheets');
 
         return array_values(array_filter(
             $stylesheets,
@@ -136,7 +121,7 @@ HTML;
             return '<!-- Vite manifest is invalid -->';
         }
 
-        $buildDir = $this->config->getString('vite.buildDirectory');
+        $buildDir = $this->configString('vite.buildDirectory');
         $basePath = '/'.trim($buildDir, '/').'/';
 
         $entryData = $manifest[$entry] ?? null;
@@ -187,40 +172,73 @@ HTML;
      */
     private function manifestPath(): string
     {
-        $buildDir = $this->config->getString('vite.buildDirectory');
-        $manifestFilename = $this->config->getString('vite.manifestFilename');
+        $buildDir = $this->configString('vite.buildDirectory');
+        $manifestFilename = $this->configString('vite.manifestFilename');
 
         return $this->paths->base.'/public/'.trim($buildDir, '/').'/'.$manifestFilename;
     }
 
-    private function configuredEntry(): ?string
+    private function configuredEntry(): string
     {
-        try {
-            $entry = trim($this->config->getString('vite.entry'));
-        } catch (Throwable) {
-            return null;
-        }
+        return $this->configString('vite.entry');
+    }
+
+    private function normalizeEntry(string $entry): string
+    {
+        $entry = trim($entry);
 
         if ($entry === '') {
-            return null;
+            throw ViteConfigurationException::empty(
+                'vite.entry',
+                'Set vite.entry in config/vite.php or pass a non-empty entry to Vite::headTags().',
+            );
         }
 
         return ltrim($entry, '/');
     }
 
-    private function devServerUrl(): ?string
+    private function devServerUrl(): string
     {
-        try {
-            $url = trim($this->config->getString('vite.devServerUrl'));
-        } catch (Throwable) {
-            return null;
-        }
+        $url = trim($this->configString('vite.devServerUrl'));
 
         if ($url === '') {
-            return null;
+            throw ViteConfigurationException::empty(
+                'vite.devServerUrl',
+                'Set vite.devServerUrl in config/vite.php when vite.useDevServer is true.',
+            );
         }
 
         return rtrim($url, '/');
+    }
+
+    private function configString(string $key): string
+    {
+        try {
+            return $this->config->getString($key);
+        } catch (ConfigException $exception) {
+            throw ViteConfigurationException::missingOrInvalid($key, $exception);
+        }
+    }
+
+    private function configBool(string $key): bool
+    {
+        try {
+            return $this->config->getBool($key);
+        } catch (ConfigException $exception) {
+            throw ViteConfigurationException::missingOrInvalid($key, $exception);
+        }
+    }
+
+    /**
+     * @return array<array-key, mixed>
+     */
+    private function configArray(string $key): array
+    {
+        try {
+            return $this->config->getArray($key);
+        } catch (ConfigException $exception) {
+            throw ViteConfigurationException::missingOrInvalid($key, $exception);
+        }
     }
 
     /**

@@ -6,16 +6,6 @@ Standalone `marko/vite` package for the Marko Framework.
 
 - `marko/vite`
 
-## Quality
+## Configuration
 
-```bash
-composer quality
-```
-
-The quality gate runs PHPStan, `php-cs-fixer`, and Pest.
-
-To apply formatting locally:
-
-```bash
-composer format
-```
+Publish or merge `config/vite.php` into your application config and set the Vite entry points for your frontend.

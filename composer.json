@@ -6,12 +6,8 @@
   "require": {
     "php": "^8.5",
     "marko/config": "self.version",
-    "marko/core": "self.version"
-  },
-  "require-dev": {
-    "friendsofphp/php-cs-fixer": "^3.92",
-    "pestphp/pest": "^4.0",
-    "phpstan/phpstan": "^2.1"
+    "marko/core": "self.version",
+    "marko/env": "self.version"
   },
   "autoload": {
     "psr-4": {
@@ -23,29 +19,9 @@
       "Marko\\Vite\\Tests\\": "tests/"
     }
   },
-  "config": {
-    "allow-plugins": {
-      "pestphp/pest-plugin": true
-    }
-  },
   "extra": {
     "marko": {
       "module": true
     }
-  },
-  "scripts": {
-    "test": "vendor/bin/pest --colors=always",
-    "analyse": "vendor/bin/phpstan analyse --memory-limit=1G",
-    "cs:check": "vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.php --dry-run --diff",
-    "cs:fix": "vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.php",
-    "format": "@cs:fix",
-    "lint": [
-      "@analyse",
-      "@cs:check"
-    ],
-    "quality": [
-      "@lint",
-      "@test"
-    ]
   }
 }

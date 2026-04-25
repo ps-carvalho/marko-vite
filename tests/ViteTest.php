@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Marko\Config\ConfigRepository;
 use Marko\Core\Path\ProjectPaths;
+use Marko\Vite\Exceptions\ViteConfigurationException;
 use Marko\Vite\Vite;
 
 beforeEach(function () {
@@ -69,16 +70,29 @@ test('vite uses the configured default entry when no entry is provided', functio
     expect($tags)->toContain('Vite manifest not found');
 });
 
-test('vite reports when no default entry is configured', function () {
+test('vite throws when no default entry is configured', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'entry' => '',
             'useDevServer' => false,
         ],
     ]);
 
     $vite = new Vite($config, $this->paths);
 
-    expect($vite->headTags())->toBe('<!-- Vite entry is not configured -->');
+    expect(fn () => $vite->headTags())
+        ->toThrow(ViteConfigurationException::class, 'vite.entry');
+});
+
+test('vite throws when dev server config is missing', function () {
+    $config = new ConfigRepository([
+        'vite' => [],
+    ]);
+
+    $vite = new Vite($config, $this->paths);
+
+    expect(fn () => $vite->useDevServer())
+        ->toThrow(ViteConfigurationException::class, 'vite.useDevServer');
 });
 
 test('vite dev server tags include vite client and entry', function () {
@@ -102,9 +116,10 @@ test('vite dev server tags include vite client and entry', function () {
     expect($tags)->not->toContain('@react-refresh');
 });
 
-test('vite reports when the dev server url is missing in dev mode', function () {
+test('vite throws when the dev server url is missing in dev mode', function () {
     $config = new ConfigRepository([
         'vite' => [
+            'devServerUrl' => '',
             'useDevServer' => true,
             'devServerStylesheets' => [],
         ],
@@ -112,8 +127,8 @@ test('vite reports when the dev server url is missing in dev mode', function () 
 
     $vite = new Vite($config, $this->paths);
 
-    expect($vite->headTags('app/web/resources/js/app.js'))
-        ->toBe('<!-- Vite dev server URL is not configured -->');
+    expect(fn () => $vite->headTags('app/web/resources/js/app.js'))
+        ->toThrow(ViteConfigurationException::class, 'vite.devServerUrl');
 });
 
 test('vite dev server tags use the configured dev server url', function () {
